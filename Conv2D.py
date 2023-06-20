@@ -34,7 +34,6 @@ class Conv2D(Layer):
         # biases
 
         self.bias = np.random.randn(*self.output.shape)
-        # self.bias = np.zeros(self.output.shape)
 
     def convolve2d(self, image, filter, stride, padding_type):
 
@@ -129,11 +128,8 @@ class Conv2D(Layer):
           # if there are different colors
           for i in range(self.num_filters):
             for j in range(self.input_depth):
-            #   kernels_gradient[i][j] = self.convolve2d(self.input[j], np.rot90(output_gradient[i][j]), self.stride, 'valid')
-
               kernels_gradient[i][j] = self.convolve2d(self.input[j], np.rot90(output_gradient[i]), self.stride,
                                         'valid')
-              # input_gradient[j] += self.convolve2d(output_gradient[i][j], self.kernels[i][j], self.stride, 'full')
                 # full musi zwrócić ten sam wymiar czyli 28x28
               input_gradient[j] += self.convolve2d(output_gradient[i], self.kernels[i][j], self.stride, 'full')
 
