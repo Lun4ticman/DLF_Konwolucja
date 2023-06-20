@@ -4,7 +4,8 @@ from tqdm import tqdm
 
 
 class Conv2D(Layer):
-    def __init__(self, image_shape, num_filters, filter_size, stride=(1, 1), padding_type='valid'):
+    def __init__(self, image_shape, num_filters, filter_size, stride=(1, 1), padding_type='valid', padding_mode = 'constant',
+                 padding_values=0):
 
         super().__init__()
         assert stride == (1, 1), 'Other strides not yet implemented'
@@ -17,6 +18,8 @@ class Conv2D(Layer):
         self.filter_size = filter_size
         self.stride = stride
         self.padding_type = padding_type
+        self.padding_mode = padding_mode
+        self.padding_values = padding_values
 
         # kernels
         # dzielone przez stałą wartość według artykułu
@@ -69,44 +72,45 @@ class Conv2D(Layer):
         # 26x26
         return output
 
-    def padding(self, x, padding_type):
+    def padding(self, x, padding_type, mode='constant', values=0):
+      dict = {'mode': mode}
+      if mode == 'constant':
+          dict['constant_values'] = values
       if x.ndim == 2:
           if padding_type == 'valid':
               return x
           elif padding_type == 'same':
               pad = (self.filter_size - 1) // 2
-              return np.pad(x, [(pad, pad), (pad, pad)], 'constant')
+              return np.pad(x, [(pad, pad), (pad, pad)], **dict)
           elif padding_type == 'full':
               pad = self.filter_size - 1
-              return np.pad(x, [(pad, pad), (pad, pad)], 'constant')
+              return np.pad(x, [(pad, pad), (pad, pad)], **dict)
       elif x.ndim == 3:
           if padding_type == 'valid':
               return x
           elif padding_type == 'same':
               pad = (self.filter_size - 1) // 2
-              return np.pad(x, [(0, 0), (pad, pad), (pad, pad)], 'constant')
+              return np.pad(x, [(0, 0), (pad, pad), (pad, pad)], **dict)
           elif padding_type == 'full':
               pad = self.filter_size - 1
-              return np.pad(x, [(0, 0), (pad, pad), (pad, pad)], 'constant')
+              return np.pad(x, [(0, 0), (pad, pad), (pad, pad)], **dict)
       else:
           raise ValueError("Input must have either 2 or 3 dimensions")
 
     def forward(self, x):
-        self.input = x
+        if self.padding_type == 'valid':
+            self.input = x
+
+        elif self.padding_type == 'same':
+            self.input = self.padding(x, 'same', self.padding_mode, self.padding_values)
 
         # self.output = np.copy(self.bias)
         self.output = np.zeros_like(self.bias)
 
-        if self.input.ndim == 2:
-          for i in range(self.num_filters):
+        for i in range(self.num_filters):
             for j in range(self.input_depth):
-              self.output[i][j] += self.convolve2d(self.input, self.kernels[i][j], self.stride, padding_type = self.padding_type)
-        elif self.input.ndim == 3:
-          for i in range(self.num_filters):
-            for j in range(self.input_depth):
-              # self.output[i][j] += self.convolve2d(self.input[j], self.kernels[i][j], self.stride, padding_type = self.padding_type)
-              self.output[i] += self.convolve2d(self.input[j], self.kernels[i][j], self.stride,
-                                                   padding_type=self.padding_type)
+                self.output[i] += self.convolve2d(self.input[j], self.kernels[i][j], self.stride,
+                                                   padding_type='valid')
 
         # add bias and return
         return self.output + self.bias
@@ -115,26 +119,16 @@ class Conv2D(Layer):
         kernels_gradient = np.zeros(self.kernels.shape)
         input_gradient = np.zeros(self.input.shape)
 
-        if self.input.ndim == 2:
-          for i in range(self.num_filters):
-              for j in range(self.input_depth):
-                 kernels_gradient[i][j] = self.convolve2d(self.input, np.rot90(output_gradient[i][j]), self.stride, 'valid')
-                 input_gradient += self.convolve2d(output_gradient[i][j], self.kernels[i][j], self.stride, 'full')
-
-          self.kernels -= learning_rate * kernels_gradient
-          self.bias -= learning_rate * output_gradient
-
-        elif self.input.ndim == 3:
-          # if there are different colors
-          for i in range(self.num_filters):
+        # if there are different colors
+        for i in range(self.num_filters):
             for j in range(self.input_depth):
               kernels_gradient[i][j] = self.convolve2d(self.input[j], np.rot90(output_gradient[i]), self.stride,
                                         'valid')
                 # full musi zwrócić ten sam wymiar czyli 28x28
               input_gradient[j] += self.convolve2d(output_gradient[i], self.kernels[i][j], self.stride, 'full')
 
-          self.kernels -= learning_rate * kernels_gradient
-          self.bias -= learning_rate * output_gradient
+        self.kernels -= learning_rate * kernels_gradient
+        self.bias -= learning_rate * output_gradient
 
         return input_gradient
 
