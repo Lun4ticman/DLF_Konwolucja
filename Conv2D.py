@@ -19,16 +19,17 @@ class Conv2D(Layer):
         self.padding_type = padding_type
 
         # kernels
-        self.kernels = np.random.randn(self.num_filters, self.input_depth, self.filter_size, self.filter_size)/(self.filter_size**2)
+        # dzielone przez stałą wartość według artykułu
+        #(self.filter_size ** 2)
+        self.kernels = np.random.randn(self.num_filters, self.input_depth, self.filter_size, self.filter_size)
 
         # output
         if self.padding_type == 'valid':
           self.output = np.zeros((self.num_filters,
-                                  self.input_depth,
                                   self.input_height - self.filter_size + 1,
                                   self.input_width - self.filter_size + 1))
         else:
-          self.output = np.zeros((self.num_filters, self.input_depth, self.input_height, self.input_width))
+          self.output = np.zeros((self.num_filters, self.input_height, self.input_width))
 
         # biases
 
@@ -43,11 +44,21 @@ class Conv2D(Layer):
 
         if padding_type == 'valid':
 
-          output_height = height - filter.shape[0] + 1
-          output_width = width - filter.shape[1] + 1
+            output_height = height - filter.shape[0] + 1
+            output_width = width - filter.shape[1] + 1
+
+        elif padding_type == 'same':
+
+            output_height = height
+            output_width = width
+
+        elif padding_type == 'full':
+
+            output_height = height + filter.shape[0] - 1
+            output_width = width + filter.shape[1] - 1
+
         else:
-          output_height = height
-          output_width = width
+            raise ValueError('No such padding implemented')
 
         image = self.padding(image, padding_type)
 
@@ -84,7 +95,8 @@ class Conv2D(Layer):
     def forward(self, x):
         self.input = x
 
-        self.output = np.copy(self.bias)
+        # self.output = np.copy(self.bias)
+        self.output = np.zeros_like(self.bias)
 
         if self.input.ndim == 2:
           for i in range(self.num_filters):
@@ -98,7 +110,7 @@ class Conv2D(Layer):
                                                    padding_type=self.padding_type)
 
         # add bias and return
-        return self.output
+        return self.output + self.bias
 
     def backward(self, output_gradient, learning_rate):
         kernels_gradient = np.zeros(self.kernels.shape)
@@ -117,12 +129,12 @@ class Conv2D(Layer):
           # if there are different colors
           for i in range(self.num_filters):
             for j in range(self.input_depth):
-            # TODO: Błąd jest tutaj, gradient kerneli zawsze wynosi zero.
             #   kernels_gradient[i][j] = self.convolve2d(self.input[j], np.rot90(output_gradient[i][j]), self.stride, 'valid')
 
               kernels_gradient[i][j] = self.convolve2d(self.input[j], np.rot90(output_gradient[i]), self.stride,
                                         'valid')
               # input_gradient[j] += self.convolve2d(output_gradient[i][j], self.kernels[i][j], self.stride, 'full')
+                # full musi zwrócić ten sam wymiar czyli 28x28
               input_gradient[j] += self.convolve2d(output_gradient[i], self.kernels[i][j], self.stride, 'full')
 
           self.kernels -= learning_rate * kernels_gradient

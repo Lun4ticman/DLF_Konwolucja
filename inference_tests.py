@@ -30,10 +30,10 @@ network = [
     # Reshape((5, 1, 28, 28), (5 * 1 * 28 * 28, 1)),
     FlattenLayer(),
     Dense(5 * 1 *26 * 26, 10),
-    SigmoidLayer(),
+    ReLULayer(),
     Dense(10, 2),
     #ReLU()
-    SoftmaxLayer()
+    SigmoidLayer()
 ]
 
 from sklearn.metrics import accuracy_score

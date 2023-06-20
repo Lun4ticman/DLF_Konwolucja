@@ -13,14 +13,14 @@ def mse_prime(y_true, y_pred):
 
 def binary_cross_entropy(y_true, y_pred, eps = 1e-10):
     y_pred = np.clip(y_pred, eps, 1.0 - eps)
-    result = np.clip(np.mean(-y_true * np.log(y_pred) - (1 - y_true) * np.log(1 - y_pred)), eps, 1.0e6)
-    return result
+    # result = np.clip(np.mean(-y_true * np.log(y_pred) - (1 - y_true) * np.log(1 - y_pred)), eps, 1.0e6)
+    return np.mean(-y_true * np.log(y_pred) - (1 - y_true) * np.log(1 - y_pred))
 
 
 def binary_cross_entropy_prime(y_true, y_pred, eps=1e-10):
     y_pred = np.clip(y_pred, eps, 1.0 - eps)
-    result = np.clip(((1 - y_true) / (1 - y_pred) - y_true / y_pred) / np.size(y_true), eps, 1.0e6)
-    return result
+    # result = np.clip(((1 - y_true) / (1 - y_pred) - y_true / y_pred) / np.size(y_true), eps, 1.0e6)
+    return ((1 - y_true) / (1 - y_pred) - y_true / y_pred) / np.size(y_true)
 
 
 def categorical_crossentropy(y_true, y_pred, eps = 1e-10):
