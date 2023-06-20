@@ -117,14 +117,14 @@ class SoftmaxLayer(Layer):
         batch_size = self.output.shape[0]
 
         # Calculate Jacobian matrix
-        jacobian = np.zeros((batch_size, self.output.shape[1], self.output.shape[1]))
-        for i in range(batch_size):
-            for j in range(self.output.shape[1]):
-                for k in range(self.output.shape[1]):
-                    if j == k:
-                        jacobian[i, j, k] = self.output[i, j] * (1 - self.output[i, k])
-                    else:
-                        jacobian[i, j, k] = -self.output[i, j] * self.output[i, k]
+        jacobian = np.zeros((self.output.shape[1], self.output.shape[1]))
+
+        for j in range(self.output.shape[1]):
+            for k in range(self.output.shape[1]):
+                if j == k:
+                    jacobian[j, k] = self.output[j] * (1 - self.output[k])
+                else:
+                    jacobian[j, k] = -self.output[j] * self.output[k]
 
         # Calculate input gradient using the Jacobian matrix
         input_gradient = np.matmul(output_gradient, jacobian)
@@ -148,9 +148,10 @@ class Reshape(Layer):
 class Dense(Layer):
     def __init__(self, input_size, output_size):
         super().__init__()
-        self.weights = np.random.randn(output_size, input_size)
-        # self.weights = np.random.randn(input_size, output_size)
-        self.bias = np.random.rand(output_size, 1)
+        # according to an article weights should be different
+
+        self.weights = np.random.randn(output_size, input_size) * np.sqrt(2/input_size)
+        self.bias = np.random.rand(output_size, 1) * np.sqrt(2/1)
 
     def forward(self, input):
         self.input = input
@@ -202,5 +203,23 @@ class FlattenLayer(Layer):
 
     def backward(self, output_gradient, learning_rate):
         input_gradient = output_gradient.reshape(self.input_shape)
+        return input_gradient
+
+
+class SigmoidLayer(Layer):
+    def __init__(self):
+        super().__init__()
+
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def forward(self, input):
+        self.input = input
+        self.output = self.sigmoid(input)
+        return self.output
+
+    def backward(self, output_gradient, learning_rate):
+        sigmoid_derivative = self.output * (1 - self.output)
+        input_gradient = sigmoid_derivative * output_gradient
         return input_gradient
 

@@ -2,6 +2,7 @@ from Base import Layer
 import numpy as np
 from tqdm import tqdm
 
+
 class Conv2D(Layer):
     def __init__(self, image_shape, num_filters, filter_size, stride=(1, 1), padding_type='valid'):
 
@@ -18,7 +19,7 @@ class Conv2D(Layer):
         self.padding_type = padding_type
 
         # kernels
-        self.kernels = np.random.randn(self.num_filters, self.input_depth, self.filter_size, self.filter_size)
+        self.kernels = np.random.randn(self.num_filters, self.input_depth, self.filter_size, self.filter_size)/(self.filter_size**2)
 
         # output
         if self.padding_type == 'valid':
@@ -32,6 +33,7 @@ class Conv2D(Layer):
         # biases
 
         self.bias = np.random.randn(*self.output.shape)
+        # self.bias = np.zeros(self.output.shape)
 
     def convolve2d(self, image, filter, stride, padding_type):
 
@@ -82,6 +84,8 @@ class Conv2D(Layer):
     def forward(self, x):
         self.input = x
 
+        self.output = np.copy(self.bias)
+
         if self.input.ndim == 2:
           for i in range(self.num_filters):
             for j in range(self.input_depth):
@@ -89,11 +93,12 @@ class Conv2D(Layer):
         elif self.input.ndim == 3:
           for i in range(self.num_filters):
             for j in range(self.input_depth):
-              self.output[i][j] += self.convolve2d(self.input[j], self.kernels[i][j], self.stride, padding_type = self.padding_type)
-
+              # self.output[i][j] += self.convolve2d(self.input[j], self.kernels[i][j], self.stride, padding_type = self.padding_type)
+              self.output[i] += self.convolve2d(self.input[j], self.kernels[i][j], self.stride,
+                                                   padding_type=self.padding_type)
 
         # add bias and return
-        return self.output + self.bias
+        return self.output
 
     def backward(self, output_gradient, learning_rate):
         kernels_gradient = np.zeros(self.kernels.shape)
@@ -112,8 +117,13 @@ class Conv2D(Layer):
           # if there are different colors
           for i in range(self.num_filters):
             for j in range(self.input_depth):
-              kernels_gradient[i][j] = self.convolve2d(self.input[j], np.rot90(output_gradient[i][j]), self.stride, 'valid')
-              input_gradient[j] += self.convolve2d(output_gradient[i][j], self.kernels[i][j], self.stride, 'full')
+            # TODO: Błąd jest tutaj, gradient kerneli zawsze wynosi zero.
+            #   kernels_gradient[i][j] = self.convolve2d(self.input[j], np.rot90(output_gradient[i][j]), self.stride, 'valid')
+
+              kernels_gradient[i][j] = self.convolve2d(self.input[j], np.rot90(output_gradient[i]), self.stride,
+                                        'valid')
+              # input_gradient[j] += self.convolve2d(output_gradient[i][j], self.kernels[i][j], self.stride, 'full')
+              input_gradient[j] += self.convolve2d(output_gradient[i], self.kernels[i][j], self.stride, 'full')
 
           self.kernels -= learning_rate * kernels_gradient
           self.bias -= learning_rate * output_gradient
@@ -129,13 +139,17 @@ def predict(network, input):
 
 
 def test(network, loss, x_test, y_test):
+    from sklearn.metrics import accuracy_score
     test_error = 0
-    predicts = []
+    y_true, y_pred = [], []
     for i, (x, y) in enumerate(zip(x_test, y_test)):
         output = predict(network, x)
+        y_pred.append(np.argmax(predict(network, x)))
+        y_true.append(np.argmax(y))
+
         test_error += loss(y, output)
 
-    print(f'Test error: {test_error}')
+    print(f'Test error: {test_error/len(x_test)}, accuracy:{accuracy_score(y_true, y_pred)}',)
 
 
 def train(network, loss, loss_prime, x_train, y_train, epochs = 100, learning_rate = 0.01, info = True):
