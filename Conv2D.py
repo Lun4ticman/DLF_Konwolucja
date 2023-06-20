@@ -175,5 +175,5 @@ def train(network, loss, loss_prime, x_train, y_train, epochs = 100, learning_ra
         error /= len(x_train)
 
         if info:
-            print(f"\r Epochs: {e + 1}/{epochs}, error={error}", end="")
+            print(f"Epochs: {e + 1}/{epochs}, error={error}")
 
