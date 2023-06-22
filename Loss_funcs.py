@@ -1,7 +1,5 @@
 # loss
 import numpy as np
-from scipy.special import xlogy
-
 
 def mse(y_true, y_pred):
     return np.average((y_true - y_pred) ** 2)

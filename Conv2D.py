@@ -9,6 +9,7 @@ class Conv2D(Layer):
 
         super().__init__()
         assert stride == (1, 1), 'Other strides not yet implemented'
+        # inne stridy nie wywalają błędu, ale nie działają dobrze
 
         # image info
         self.input_depth, self.input_height, self.input_width = image_shape
@@ -104,7 +105,6 @@ class Conv2D(Layer):
         elif self.padding_type == 'same':
             self.input = self.padding(x, 'same', self.padding_mode, self.padding_values)
 
-        # self.output = np.copy(self.bias)
         self.output = np.zeros_like(self.bias)
 
         for i in range(self.num_filters):
@@ -122,10 +122,10 @@ class Conv2D(Layer):
         # if there are different colors
         for i in range(self.num_filters):
             for j in range(self.input_depth):
-              kernels_gradient[i][j] = self.convolve2d(self.input[j], np.rot90(output_gradient[i]), self.stride,
+                kernels_gradient[i][j] = self.convolve2d(self.input[j], np.rot90(output_gradient[i]), self.stride,
                                         'valid')
                 # full musi zwrócić ten sam wymiar czyli 28x28
-              input_gradient[j] += self.convolve2d(output_gradient[i], self.kernels[i][j], self.stride, 'full')
+                input_gradient[j] += self.convolve2d(output_gradient[i], self.kernels[i][j], self.stride, 'full')
 
         self.kernels -= learning_rate * kernels_gradient
         self.bias -= learning_rate * output_gradient
@@ -142,26 +142,26 @@ def predict(network, input):
 
 def test(network, loss, x_test, y_test):
     from sklearn.metrics import accuracy_score
-    test_error = 0
+    test_loss = 0
     y_true, y_pred = [], []
     for i, (x, y) in enumerate(zip(x_test, y_test)):
         output = predict(network, x)
-        y_pred.append(np.argmax(predict(network, x)))
+        y_pred.append(np.argmax(output))
         y_true.append(np.argmax(y))
 
-        test_error += loss(y, output)
+        test_loss += loss(y, output)
 
-    print(f'Test error: {test_error/len(x_test)}, accuracy:{accuracy_score(y_true, y_pred)}',)
+    print(f'Test error: {test_loss/len(x_test)}, accuracy:{accuracy_score(y_true, y_pred)}',)
 
 
 def train(network, loss, loss_prime, x_train, y_train, epochs = 100, learning_rate = 0.01, info = True):
     for e in tqdm(range(epochs)):
-        error = 0
+        train_loss = 0
         for i, (x, y) in enumerate(zip(x_train, y_train)):
             # forward
             output = predict(network, x)
             # error
-            error += loss(y, output)
+            train_loss += loss(y, output)
             #print('error', error.shape)
 
             # backward
@@ -169,11 +169,11 @@ def train(network, loss, loss_prime, x_train, y_train, epochs = 100, learning_ra
             for layer in reversed(network):
                 grad = layer.backward(grad, learning_rate)
 
-            if i % 10 == 0:
-                print(f'\r Sample {i}/{len(x_train)}, error: {error/i}', end="")
+            if i % 10 == 0 and i != 0:
+                print(f'\r Sample {i}/{len(x_train)}, error: {train_loss/i}', end="")
 
-        error /= len(x_train)
+        train_loss /= len(x_train)
 
         if info:
-            print(f"Epochs: {e + 1}/{epochs}, error={error}")
+            print(f" \n Epochs: {e + 1}/{epochs}, error={train_loss}")
 

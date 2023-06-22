@@ -16,18 +16,20 @@ x_train, y_train = preprocess_data_conv(x_train, y_train, 200, labels=(0,1,2,3))
 x_test, y_test = preprocess_data_conv(x_test, y_test, 100, labels=(0,1,2,3))
 
 network = [
-    #Convolutional((1, 28, 28), (3, 3), 5, padding = (1,1)),
-    Conv2D(image_shape = (1, 28, 28), num_filters = 5, filter_size = 3, stride = (1, 1), padding_type = 'same',
+    Conv2D(image_shape = (1, 28, 28), num_filters = 8, filter_size = 3, stride = (1, 1), padding_type = 'same',
            padding_mode='constant'),
     ReLULayer(),
     # no padding, so shape changes
     #Reshape (filters, depth, height, width)
-    Reshape((5, 28, 28), (5 * 28 * 28, 1)),
-    # FlattenLayer(),
-    Dense(5 * 28 * 28, 100),
+    # Reshape((8, 28, 28), (8 * 28 * 28, 1)),
+    # Conv2D(image_shape = (8, 28, 28), num_filters = 4, filter_size = 3, stride = (1, 1), padding_type = 'valid',
+    #        padding_mode='constant'),
+    # ReLU(),
+    FlattenLayer(),
+    Dense(8 * 28 * 28, 100),
+    Dropout(0.1),
     SigmoidLayer(),
     Dense(100, 4),
-    #ReLU()
     SigmoidLayer()
 ]
 
@@ -37,8 +39,8 @@ train(
     categorical_crossentropy_prime,
     x_train,
     y_train,
-    epochs=5,
+    epochs=2,
     learning_rate=0.01
 )
 
-test(network, binary_cross_entropy, x_test, y_test)
+test(network, categorical_crossentropy, x_test, y_test)
